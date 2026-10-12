@@ -1,0 +1,39 @@
+
+# Variables de entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Credenciales de Google y OAuth
+credentials/
+token.json
+google_oauth_client.json
+client_secret*.json
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Cachés de herramientas
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Editor y sistema operativo
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Archivos locales temporales
+*.log

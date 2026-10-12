@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agendaai-starter"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "google-genai>=1.0,<2",
+  "python-telegram-bot>=22,<23",
+  "pydantic-settings>=2,<3",
+  "psycopg[binary]>=3.2,<4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.24,<2", "ruff>=0.11,<1"]
+
+[project.scripts]
+agendaai = "agendaai.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
