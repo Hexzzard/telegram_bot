@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 from datetime import datetime
@@ -85,11 +84,7 @@ class GeminiService:
             contents = [
                 types.Content(
                     role=item.role,
-                    parts=[
-                        types.Part.from_text(
-                            text=item.content
-                        )
-                    ],
+                    parts=[types.Part.from_text(text=item.content)],
                 )
                 for item in history
             ]
@@ -97,19 +92,13 @@ class GeminiService:
             contents.append(
                 types.Content(
                     role="user",
-                    parts=[
-                        types.Part.from_text(text=message)
-                    ],
+                    parts=[types.Part.from_text(text=message)],
                 )
             )
 
             now = datetime.now(TIMEZONE)
 
-            instructions = (
-                SYSTEM_INSTRUCTION
-                + "\nFecha y hora actual de Chile: "
-                + now.isoformat()
-            )
+            instructions = SYSTEM_INSTRUCTION + "\nFecha y hora actual de Chile: " + now.isoformat()
 
             tools = []
 
@@ -122,11 +111,7 @@ class GeminiService:
             config = types.GenerateContentConfig(
                 system_instruction=instructions,
                 tools=tools or None,
-                automatic_function_calling=(
-                    types.AutomaticFunctionCallingConfig(
-                        disable=True
-                    )
-                ),
+                automatic_function_calling=(types.AutomaticFunctionCallingConfig(disable=True)),
             )
 
             try:
@@ -174,15 +159,11 @@ class GeminiService:
 
             if len(calls) > 1:
                 answer_text = (
-                    "Procesaré una solicitud a la vez. "
-                    "Indica qué operación quieres realizar."
+                    "Procesaré una solicitud a la vez. Indica qué operación quieres realizar."
                 )
 
             elif not calls:
-                answer_text = (
-                    response.text
-                    or "No pude generar una respuesta."
-                )
+                answer_text = response.text or "No pude generar una respuesta."
 
             else:
                 call = calls[0]
@@ -195,21 +176,14 @@ class GeminiService:
 
                 if call.name == "create_booking":
                     if self._booking_executor is None:
-                        answer_text = (
-                            "Las reservas no están habilitadas."
-                        )
+                        answer_text = "Las reservas no están habilitadas."
                     elif request_id is None:
-                        answer_text = (
-                            "No puedo identificar esta solicitud "
-                            "de forma segura."
-                        )
+                        answer_text = "No puedo identificar esta solicitud de forma segura."
                     else:
-                        answer_text = (
-                            await self._booking_executor.execute(
-                                args,
-                                user_id=user_id,
-                                telegram_update_id=request_id,
-                            )
+                        answer_text = await self._booking_executor.execute(
+                            args,
+                            user_id=user_id,
+                            telegram_update_id=request_id,
                         )
 
                 elif call.name in (
@@ -217,15 +191,11 @@ class GeminiService:
                     "get_available_slots",
                 ):
                     if self._availability_executor is None:
-                        answer_text = (
-                            "La agenda no está configurada."
-                        )
+                        answer_text = "La agenda no está configurada."
                     else:
-                        answer_text = (
-                            await self._availability_executor.execute(
-                                call.name,
-                                args,
-                            )
+                        answer_text = await self._availability_executor.execute(
+                            call.name,
+                            args,
                         )
 
                 else:
@@ -233,9 +203,7 @@ class GeminiService:
                         "Herramienta no autorizada: %s",
                         call.name,
                     )
-                    answer_text = (
-                        "No puedo ejecutar esa herramienta."
-                    )
+                    answer_text = "No puedo ejecutar esa herramienta."
 
             await self._repository.save_exchange(
                 user_id=user_id,

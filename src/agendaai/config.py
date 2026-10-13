@@ -25,6 +25,10 @@ class Settings(BaseSettings):
 
     allowed_telegram_user_ids: str = ""
 
+    resend_api_key: SecretStr
+    email_from: str = "AgendaAI <onboarding@resend.dev>"
+    email_verification_secret: SecretStr
+
     @property
     def allowed_users(self) -> set[int]:
         raw = self.allowed_telegram_user_ids.strip()

@@ -1,4 +1,3 @@
-
 import asyncio
 from types import SimpleNamespace
 
@@ -18,9 +17,7 @@ class FakeRepository:
         user_message,
         model_message,
     ):
-        self.messages.append(
-            (user_id, user_message, model_message)
-        )
+        self.messages.append((user_id, user_message, model_message))
 
     async def delete_history(self, user_id):
         self.messages.clear()
@@ -64,9 +61,7 @@ def test_booking_uses_real_telegram_identity():
                     name="create_booking",
                     args={
                         "title": "Asesoría general",
-                        "start_at": (
-                            "2030-10-15T15:00:00-03:00"
-                        ),
+                        "start_at": ("2030-10-15T15:00:00-03:00"),
                     },
                 )
             ],
@@ -80,9 +75,7 @@ def test_booking_uses_real_telegram_identity():
             booking_executor=executor,
         )
 
-        service._client = SimpleNamespace(
-            models=FakeModels(response)
-        )
+        service._client = SimpleNamespace(models=FakeModels(response))
 
         result = await service.answer(
             user_id=12345,
@@ -107,9 +100,7 @@ def test_booking_rejects_missing_request_id():
                     name="create_booking",
                     args={
                         "title": "Asesoría",
-                        "start_at": (
-                            "2030-10-15T15:00:00-03:00"
-                        ),
+                        "start_at": ("2030-10-15T15:00:00-03:00"),
                     },
                 )
             ],
@@ -123,9 +114,7 @@ def test_booking_rejects_missing_request_id():
             booking_executor=executor,
         )
 
-        service._client = SimpleNamespace(
-            models=FakeModels(response)
-        )
+        service._client = SimpleNamespace(models=FakeModels(response))
 
         result = await service.answer(
             user_id=12345,

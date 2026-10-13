@@ -1,9 +1,10 @@
-
 import logging
 from typing import Protocol
 
 from telegram import Update
 from telegram.ext import ContextTypes
+
+from agendaai.receipt_flow import ReceiptFlow
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ def is_authorized(
 def build_handlers(
     service: AnswerService,
     allowed_users: set[int],
+    receipt_flow: ReceiptFlow,
 ):
     async def start(
         update: Update,
@@ -43,32 +45,39 @@ def build_handlers(
         user_id = update.effective_user.id
 
         if not is_authorized(user_id, allowed_users):
-            await update.message.reply_text(
-                "No tienes acceso a este bot."
-            )
+            await update.message.reply_text("No tienes acceso a este bot.")
             return
 
         await update.message.reply_text(
             "¡Hola! Soy AgendaAI.\n\n"
-            "Puedo consultar horarios y gestionar "
-            "reservas automáticas de Asesoría general.\n\n"
-            "Puedes preguntarme por horarios disponibles "
-            "o solicitar una reserva concreta.\n\n"
+            "Puedo consultar horarios disponibles "
+            "y crear reservas automáticamente.\n\n"
+            "Después de reservar, puedo enviarte "
+            "un comprobante por correo electrónico.\n\n"
             "Comandos:\n"
             "/start - Información inicial\n"
             "/whoami - Tu identificador\n"
-            "/reset - Borrar historial conversacional"
+            "/reset - Borrar historial conversacional\n\n"
+            "Para reservar, puedes escribir:\n"
+            "Quiero reservar una asesoría "
+            "el jueves a las 15:00."
         )
 
     async def whoami(
         update: Update,
         context: ContextTypes.DEFAULT_TYPE,
     ) -> None:
-        if update.effective_user and update.message:
-            await update.message.reply_text(
-                f"Tu Telegram ID es "
-                f"{update.effective_user.id}."
-            )
+        if not update.effective_user or not update.message:
+            return
+
+        if not is_authorized(
+            update.effective_user.id,
+            allowed_users,
+        ):
+            await update.message.reply_text("No tienes acceso a este bot.")
+            return
+
+        await update.message.reply_text(f"Tu Telegram ID es {update.effective_user.id}.")
 
     async def reset(
         update: Update,
@@ -80,48 +89,60 @@ def build_handlers(
         user_id = update.effective_user.id
 
         if not is_authorized(user_id, allowed_users):
-            await update.message.reply_text(
-                "No tienes acceso a este bot."
-            )
+            await update.message.reply_text("No tienes acceso a este bot.")
             return
 
         await service.reset(user_id)
 
         await update.message.reply_text(
-            "Tu historial conversacional fue eliminado. "
-            "Las reservas realizadas se conservan."
+            "Historial conversacional eliminado.\n"
+            "Tus reservas se conservan.\n"
+            "Si tienes una verificación de correo "
+            "pendiente, también se conserva."
         )
 
     async def on_message(
         update: Update,
         context: ContextTypes.DEFAULT_TYPE,
     ) -> None:
-        if (
-            not update.effective_user
-            or not update.message
-            or not update.message.text
-        ):
+        if not update.effective_user or not update.message or not update.message.text:
             return
 
         user_id = update.effective_user.id
 
         if not is_authorized(user_id, allowed_users):
+            await update.message.reply_text("No tienes acceso a este bot.")
+            return
+
+        # Los comprobantes contienen datos
+        # personales: flujo solo en chat privado.
+        if update.effective_chat.type != "private":
             await update.message.reply_text(
-                "No tienes acceso a este bot."
+                "Para proteger tus reservas y tu correo, utiliza un chat privado conmigo."
             )
             return
 
         try:
-            response = await service.answer(
+            flow_response = await receipt_flow.handle(
                 user_id=user_id,
                 message=update.message.text,
-                request_id=update.update_id,
             )
 
-            for index in range(0, len(response), 4000):
-                await update.message.reply_text(
-                    response[index:index + 4000]
+            if flow_response.handled:
+                response = flow_response.text
+
+            else:
+                response = await service.answer(
+                    user_id=user_id,
+                    message=update.message.text,
+                    request_id=update.update_id,
                 )
+
+            if not response:
+                response = "No pude generar una respuesta."
+
+            for index in range(0, len(response), 4000):
+                await update.message.reply_text(response[index : index + 4000])
 
         except Exception:
             logger.exception(
@@ -131,8 +152,9 @@ def build_handlers(
 
             await update.message.reply_text(
                 "No pude completar la operación. "
-                "Si solicitaste una reserva, consulta "
-                "su estado antes de reintentar."
+                "Tu reserva podría seguir confirmada. "
+                "No solicites otra cita sin revisar "
+                "primero su estado."
             )
 
     return start, whoami, reset, on_message

@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from uuid import NAMESPACE_URL, uuid5
 
@@ -27,10 +26,7 @@ class BookingService:
     ) -> BookingResult:
         key = uuid5(
             NAMESPACE_URL,
-            (
-                "agendaai:booking:"
-                f"{user_id}:{telegram_update_id}"
-            ),
+            (f"agendaai:booking:{user_id}:{telegram_update_id}"),
         )
 
         return await self._repository.create_booking(

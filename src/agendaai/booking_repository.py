@@ -1,11 +1,12 @@
-
 from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-import psycopg
 from psycopg import errors
+from psycopg_pool import AsyncConnectionPool
+
+from agendaai.db_connection import open_connection
 
 
 @dataclass(frozen=True)
@@ -39,7 +40,7 @@ class BookingResult:
 
 
 class BookingRepository:
-    def __init__(self, database_url: str):
+    def __init__(self, database_url: str | AsyncConnectionPool):
         self._database_url = database_url
 
     async def get_resource(
@@ -47,10 +48,7 @@ class BookingRepository:
         resource_id: int,
     ) -> BookingResource | None:
         async with (
-            await psycopg.AsyncConnection.connect(
-                self._database_url,
-                connect_timeout=10,
-            ) as conn,
+            open_connection(self._database_url) as conn,
             conn.cursor() as cursor,
         ):
             await cursor.execute(
@@ -73,10 +71,7 @@ class BookingRepository:
         resource_id: int,
     ) -> list[AvailabilityRule]:
         async with (
-            await psycopg.AsyncConnection.connect(
-                self._database_url,
-                connect_timeout=10,
-            ) as conn,
+            open_connection(self._database_url) as conn,
             conn.cursor() as cursor,
         ):
             await cursor.execute(
@@ -99,10 +94,7 @@ class BookingRepository:
         end_at: datetime,
     ) -> list[BookedInterval]:
         async with (
-            await psycopg.AsyncConnection.connect(
-                self._database_url,
-                connect_timeout=10,
-            ) as conn,
+            open_connection(self._database_url) as conn,
             conn.cursor() as cursor,
         ):
             await cursor.execute(
@@ -137,11 +129,11 @@ class BookingRepository:
             raise ValueError("Título inválido")
 
         try:
-            async with await psycopg.AsyncConnection.connect(
-                self._database_url,
-                connect_timeout=10,
-            ) as conn, conn.transaction(), conn.cursor() as cursor:
-
+            async with (
+                open_connection(self._database_url) as conn,
+                conn.transaction(),
+                conn.cursor() as cursor,
+            ):
                 # Todas las reservas de este recurso
                 # siguen el mismo turno transaccional.
                 await cursor.execute(
@@ -215,18 +207,14 @@ class BookingRepository:
 
                 local_start = start_at.astimezone(tz)
                 start_utc = start_at.astimezone(UTC)
-                end_utc = start_utc + timedelta(
-                    minutes=duration_minutes
-                )
+                end_utc = start_utc + timedelta(minutes=duration_minutes)
                 local_end = end_utc.astimezone(tz)
 
                 # No reinterpretar silenciosamente un
                 # offset incorrecto enviado por el modelo.
                 if (
-                    local_start.replace(tzinfo=None)
-                    != start_at.replace(tzinfo=None)
-                    or local_start.utcoffset()
-                    != start_at.utcoffset()
+                    local_start.replace(tzinfo=None) != start_at.replace(tzinfo=None)
+                    or local_start.utcoffset() != start_at.utcoffset()
                 ):
                     return BookingResult(
                         state="invalid",

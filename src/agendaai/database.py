@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
-import psycopg
+from psycopg_pool import AsyncConnectionPool
+
+from agendaai.db_connection import open_connection
 
 
 @dataclass(frozen=True)
@@ -10,15 +12,12 @@ class ChatMessage:
 
 
 class ConversationRepository:
-    def __init__(self, database_url: str):
+    def __init__(self, database_url: str | AsyncConnectionPool):
         self._database_url = database_url
 
     async def check_connection(self) -> None:
         async with (
-            await psycopg.AsyncConnection.connect(
-                self._database_url,
-                connect_timeout=10,
-            ) as conn,
+            open_connection(self._database_url) as conn,
             conn.cursor() as cursor,
         ):
             await cursor.execute("SELECT 1")
@@ -33,7 +32,7 @@ class ConversationRepository:
             raise ValueError("limit must be positive")
 
         async with (
-            await psycopg.AsyncConnection.connect(self._database_url) as conn,
+            open_connection(self._database_url) as conn,
             conn.cursor() as cursor,
         ):
             await cursor.execute(
@@ -62,7 +61,7 @@ class ConversationRepository:
         model_message: str,
     ) -> None:
         async with (
-            await psycopg.AsyncConnection.connect(self._database_url) as conn,
+            open_connection(self._database_url) as conn,
             conn.transaction(),
             conn.cursor() as cursor,
         ):
@@ -107,7 +106,7 @@ class ConversationRepository:
         user_id: int,
     ) -> None:
         async with (
-            await psycopg.AsyncConnection.connect(self._database_url) as conn,
+            open_connection(self._database_url) as conn,
             conn.cursor() as cursor,
         ):
             await cursor.execute(

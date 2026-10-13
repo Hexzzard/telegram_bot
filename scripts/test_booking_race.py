@@ -1,4 +1,3 @@
-
 import asyncio
 import sys
 from datetime import datetime, timedelta
@@ -38,9 +37,7 @@ async def main() -> None:
     resource_id = None
 
     # IDs ficticios exclusivos para esta prueba.
-    base_user = 5_000_000_000 + (
-        uuid4().int % 1_000_000_000
-    )
+    base_user = 5_000_000_000 + (uuid4().int % 1_000_000_000)
     user_a = base_user
     user_b = base_user + 1
 
@@ -48,9 +45,10 @@ async def main() -> None:
 
     try:
         # Preparar recurso independiente.
-        async with await psycopg.AsyncConnection.connect(
-            database_url
-        ) as conn, conn.cursor() as cursor:
+        async with (
+            await psycopg.AsyncConnection.connect(database_url) as conn,
+            conn.cursor() as cursor,
+        ):
             await cursor.execute(
                 """
                     INSERT INTO public.booking_resources (
@@ -97,21 +95,13 @@ async def main() -> None:
                 idempotency_key=key,
             )
 
-            print(
-                f"Usuario {user_id}: "
-                f"{result.state} "
-                f"(ID: {result.booking_id})"
-            )
+            print(f"Usuario {user_id}: {result.state} (ID: {result.booking_id})")
 
             return result
 
-        task_a = asyncio.create_task(
-            attempt(user_a, key_a)
-        )
+        task_a = asyncio.create_task(attempt(user_a, key_a))
 
-        task_b = asyncio.create_task(
-            attempt(user_b, key_b)
-        )
+        task_b = asyncio.create_task(attempt(user_b, key_b))
 
         print("\nEjecutando dos reservas simultáneas...")
         barrier.set()
@@ -121,20 +111,21 @@ async def main() -> None:
             task_b,
         )
 
-        states = sorted([
-            result_a.state,
-            result_b.state,
-        ])
-
-        assert states == ["created", "unavailable"], (
-            f"Resultado inesperado: {states}"
+        states = sorted(
+            [
+                result_a.state,
+                result_b.state,
+            ]
         )
+
+        assert states == ["created", "unavailable"], f"Resultado inesperado: {states}"
 
         # Comprobar lo que realmente quedó
         # escrito en PostgreSQL.
-        async with await psycopg.AsyncConnection.connect(
-            database_url
-        ) as conn, conn.cursor() as cursor:
+        async with (
+            await psycopg.AsyncConnection.connect(database_url) as conn,
+            conn.cursor() as cursor,
+        ):
             await cursor.execute(
                 """
                     SELECT id, telegram_user_id, start_at
@@ -147,14 +138,10 @@ async def main() -> None:
 
             rows = await cursor.fetchall()
 
-        assert len(rows) == 1, (
-            "Se esperaba exactamente una reserva"
-        )
+        assert len(rows) == 1, "Se esperaba exactamente una reserva"
 
         winner_id = rows[0][1]
-        winner_key = (
-            key_a if winner_id == user_a else key_b
-        )
+        winner_key = key_a if winner_id == user_a else key_b
 
         print("\nProbando idempotencia...")
 
@@ -178,9 +165,10 @@ async def main() -> None:
         # Eliminar los datos temporales,
         # incluso si alguna prueba falla.
         if resource_id is not None:
-            async with await psycopg.AsyncConnection.connect(
-                database_url
-            ) as conn, conn.cursor() as cursor:
+            async with (
+                await psycopg.AsyncConnection.connect(database_url) as conn,
+                conn.cursor() as cursor,
+            ):
                 await cursor.execute(
                     """
                         DELETE FROM public.bookings
@@ -210,8 +198,6 @@ async def main() -> None:
 
 if __name__ == "__main__":
     if sys.platform == "win32":
-        asyncio.set_event_loop_policy(
-            asyncio.WindowsSelectorEventLoopPolicy()
-        )
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     asyncio.run(main())
