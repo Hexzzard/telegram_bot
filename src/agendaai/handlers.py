@@ -1,4 +1,7 @@
 import logging
+import os
+import re
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from typing import Protocol
 
 from telegram import Update
@@ -35,6 +38,7 @@ def build_handlers(
     allowed_users: set[int],
     receipt_flow: ReceiptFlow,
 ):
+    public_calendar_url = os.getenv("GOOGLE_PUBLIC_CALENDAR_URL", "").strip()
     async def start(
         update: Update,
         context: ContextTypes.DEFAULT_TYPE,
@@ -141,8 +145,19 @@ def build_handlers(
             if not response:
                 response = "No pude generar una respuesta."
 
-            for index in range(0, len(response), 4000):
-                await update.message.reply_text(response[index : index + 4000])
+            # Enlace visual solo cuando se habla del calendario, las horas o una reserva.
+            show_calendar = bool(public_calendar_url) and bool(re.search(
+                r"calendario|disponib|horario|hora|agend|reserv|cita", 
+                update.message.text + " " + response, re.IGNORECASE
+            ))
+            keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(
+                "📅 Haz clic aquí para ver el calendario", url=public_calendar_url
+            )]]) if show_calendar and public_calendar_url.startswith("https://calendar.google.com/") else None
+            parts = [response[index:index + 4000] for index in range(0, len(response), 4000)]
+            for index, part in enumerate(parts):
+                await update.message.reply_text(
+                    part, reply_markup=keyboard if index == len(parts)-1 else None
+                )
 
         except Exception:
             logger.exception(

@@ -6,9 +6,15 @@ from agendaai.conversation_state import (
     ConversationStateRepository,
 )
 
-USER_ID = 8098006883
-BOOKING_ID = 4
+import os
+from pathlib import Path
+from dotenv import load_dotenv
 
+BASE_DIR = Path(__file__).resolve().parents[1]
+load_dotenv(BASE_DIR / ".env")
+
+USER_ID = int(os.environ["TELEGRAM_TEST_USER_ID"])
+BOOKING_ID = int(os.environ["TEST_BOOKING_ID"])
 
 async def main() -> None:
     settings = Settings()

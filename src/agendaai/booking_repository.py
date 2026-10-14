@@ -119,6 +119,7 @@ class BookingRepository:
         resource_id: int,
         user_id: int,
         title: str,
+        client_name: str,
         start_at: datetime,
         idempotency_key: UUID,
     ) -> BookingResult:
@@ -126,7 +127,9 @@ class BookingRepository:
             raise ValueError("La fecha necesita zona horaria")
 
         if not title.strip() or len(title) > 200:
-            raise ValueError("Título inválido")
+            raise ValueError("Motivo inválido")
+        if not client_name.strip() or len(client_name) > 120:
+            raise ValueError("Nombre de cliente inválido")
 
         try:
             async with (
@@ -147,7 +150,7 @@ class BookingRepository:
                     """
                             SELECT
                                 id, telegram_user_id,
-                                resource_id, title,
+                                resource_id, title, client_name,
                                 start_at, end_at, status
                             FROM public.bookings
                             WHERE idempotency_key = %s
@@ -162,6 +165,7 @@ class BookingRepository:
                         owner_id,
                         saved_resource,
                         saved_title,
+                        saved_client_name,
                         saved_start,
                         saved_end,
                         saved_status,
@@ -171,6 +175,7 @@ class BookingRepository:
                         owner_id != user_id
                         or saved_resource != resource_id
                         or saved_title != title.strip()
+                        or saved_client_name != client_name.strip()
                         or saved_start != start_at
                     ):
                         return BookingResult(
@@ -304,13 +309,14 @@ class BookingRepository:
                                 resource_id,
                                 telegram_user_id,
                                 title,
+                                client_name,
                                 start_at,
                                 end_at,
                                 status,
                                 idempotency_key
                             )
                             VALUES (
-                                %s, %s, %s, %s, %s,
+                                %s, %s, %s, %s, %s, %s,
                                 'confirmed', %s
                             )
                             RETURNING id
@@ -319,6 +325,7 @@ class BookingRepository:
                         resource_id,
                         user_id,
                         title.strip(),
+                        client_name.strip(),
                         start_utc,
                         end_utc,
                         idempotency_key,

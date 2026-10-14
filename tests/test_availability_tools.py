@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import json
 
 import pytest
 
@@ -60,7 +61,11 @@ def test_check_availability_tool():
             },
         )
 
-        assert "DISPONIBLE" in result
+        payload = json.loads(result)
+
+        assert payload["type"] == "availability_check"
+        assert payload["available"] is True
+        assert payload["reservation_created"] is False
         assert service.last_call[0] == "check_availability"
         assert service.last_call[1] == 1
 
@@ -81,8 +86,11 @@ def test_get_available_slots_tool():
             {"target_date": "2030-10-15"},
         )
 
-        assert "09:00" in result
-        assert "09:30" in result
+        payload = json.loads(result)
+        assert payload["type"] == "available_slots"
+        assert payload["date"] == "2030-10-15"
+        assert payload["slots"] == ["09:00", "09:30"]
+        assert payload["reservation_created"] is False
         assert service.last_call[0] == "get_available_slots"
 
     asyncio.run(scenario())

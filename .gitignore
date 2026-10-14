@@ -37,3 +37,5 @@ Thumbs.db
 
 # Archivos locales temporales
 *.log
+
+credenciales/

@@ -22,6 +22,7 @@ class BookingService:
         user_id: int,
         telegram_update_id: int,
         title: str,
+        client_name: str,
         start_at: datetime,
     ) -> BookingResult:
         key = uuid5(
@@ -33,6 +34,7 @@ class BookingService:
             resource_id=self._resource_id,
             user_id=user_id,
             title=title,
+            client_name=client_name,
             start_at=start_at,
             idempotency_key=key,
         )

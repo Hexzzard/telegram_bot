@@ -1,4 +1,5 @@
 import logging
+import json
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -46,7 +47,7 @@ AVAILABILITY_TOOL = types.Tool(
             name="check_availability",
             description=(
                 "Consulta si existe disponibilidad real "
-                "para una reunión en una fecha y hora. "
+                "para una atención veterinaria en una fecha y hora. "
                 "La duración depende del servicio "
                 "configurado en la agenda. "
                 "No crea reservas."
@@ -116,18 +117,14 @@ class AvailabilityToolExecutor:
                     start_at=request.start_at,
                 )
 
-                if available:
-                    return (
-                        "DISPONIBLE: el horario solicitado "
-                        "está libre según la agenda. "
-                        "No se ha creado ninguna reserva."
-                    )
-
-                return (
-                    "NO DISPONIBLE: el horario solicitado "
-                    "no puede reservarse. Puede estar ocupado, "
-                    "fuera del horario de atención o en el pasado. "
-                    "Consulta otras alternativas si es necesario."
+                return json.dumps(
+                    {
+                        "type": "availability_check",
+                        "start_at": request.start_at.isoformat(),
+                        "available": bool(available),
+                        "reservation_created": False,
+                    },
+                    ensure_ascii=False,
                 )
 
             if name == "get_available_slots":
@@ -138,17 +135,19 @@ class AvailabilityToolExecutor:
                     target_date=request.target_date,
                 )
 
-                if not slots:
-                    return f"No hay horarios disponibles para el {request.target_date.isoformat()}."
-
                 timezone = ZoneInfo("America/Santiago")
-
-                times = [slot.astimezone(timezone).strftime("%H:%M") for slot in slots]
-
-                return (
-                    "Horarios disponibles para "
-                    f"{request.target_date.isoformat()} "
-                    "(hora de Chile):\n" + "\n".join(times) + "\n\nNinguna reserva ha sido creada."
+                return json.dumps(
+                    {
+                        "type": "available_slots",
+                        "date": request.target_date.isoformat(),
+                        "timezone": "America/Santiago",
+                        "slots": [
+                            slot.astimezone(timezone).strftime("%H:%M")
+                            for slot in slots
+                        ],
+                        "reservation_created": False,
+                    },
+                    ensure_ascii=False,
                 )
 
             raise ValueError(f"Herramienta no autorizada: {name}")
