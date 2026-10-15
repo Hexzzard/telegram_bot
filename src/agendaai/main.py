@@ -38,7 +38,6 @@ from agendaai.receipt_flow import ReceiptFlow
 from agendaai.receipt_service import ReceiptService
 from agendaai.tools.availability import AvailabilityToolExecutor
 from agendaai.tools.booking import BookingToolExecutor
-from agendaai.tools.memory import MemoryToolExecutor
 from agendaai.tools.knowledge import KnowledgeToolExecutor
 from agendaai.tools.cancellation import CancellationToolExecutor
 
@@ -129,13 +128,6 @@ def main() -> None:
     embedding_client = genai.Client(
         api_key=settings.gemini_api_key.get_secret_value()
     )
-    memory_executor = MemoryToolExecutor(
-        pool=shared_pool,
-        client=embedding_client,
-        limit=3,
-        minimum_similarity=0.55,
-    )
-
     knowledge_executor = KnowledgeToolExecutor(
         pool=shared_pool,
         client=embedding_client,
@@ -155,7 +147,6 @@ def main() -> None:
         availability_executor=availability_executor,
         booking_executor=booking_executor,
         max_turns=10,
-        memory_executor=memory_executor,
         knowledge_executor=knowledge_executor,
         cancellation_executor=cancellation_executor,
         debug_sources=debug_sources,
